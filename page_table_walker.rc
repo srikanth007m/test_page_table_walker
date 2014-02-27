@@ -1,0 +1,22 @@
+KERNEL_SRC=/src/linux-dev
+. test_core/lib/setup_mce_tools.sh
+
+DEFAULT_TEST_PREPARE=prepare_test
+DEFAULT_TEST_CHECKER=cleanup_test
+
+. setup_mbind.sh
+
+TEST_TITLE='mbind_test'
+TEST_PROGRAM="${MBIND}"
+EXPECTED_RETURN_CODE="START EXIT"
+TEST_CONTROLLER=control_mbind
+TEST_CHECKER=check_mbind
+do_test_sync
+
+TEST_TITLE='mbind_test_fuzz'
+TEST_PREPARE=prepare_mbind_fuzz
+TEST_CHECKER=cleanup_mbind_fuzz
+TEST_CONTROLLER=control_mbind_fuzz
+TEST_CHECKER=check_mbind_fuzz
+EXPECTED_RETURN_CODE="START EXIT"
+do_test_async

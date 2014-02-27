@@ -1,0 +1,121 @@
+#!/bin/bash
+
+if [[ "$0" =~ "$BASH_SOURCE" ]] ; then
+    echo "$BASH_SOURCE should be included from another script, not directly called."
+    exit 1
+fi
+
+# Main test programs
+MBIND=$(dirname $(readlink -f $BASH_SOURCE))/mbind
+MBIND_FUZZ=$(dirname $(readlink -f $BASH_SOURCE))/mbind_fuzz
+[ ! -x "$MBIND" ] && echo "${MBIND} not found." >&2 && exit 1
+[ ! -x "$MBIND_FUZZ" ] && echo "${MBIND_FUZZ} not found." >&2 && exit 1
+TESTFILE=${WDIR}/testfile
+sysctl vm.nr_hugepages=200
+
+prepare_test() {
+    get_kernel_message_before
+}
+
+cleanup_test() {
+    get_kernel_message_after
+    get_kernel_message_diff
+}
+
+control_mbind() {
+    local pid="$1"
+    local line="$2"
+
+    echo "$line" | tee -a ${OFILE}
+    case "$line" in
+        "before mbind")
+            ${PAGETYPES} -p ${pid} -a 0x700000000+0x2000 -Nrl | tee -a ${OFILE}
+            cat /proc/${pid}/numa_maps | grep "^70" | tee ${TMPF}.numa_maps1
+            kill -SIGUSR1 $pid
+            ;;
+        "entering busy loop")
+            sleep 0.5
+            kill -SIGUSR1 $pid
+            ;;
+        "mbind exit")
+            ${PAGETYPES} -p ${pid} -a 0x700000000+0x2000 -Nrl | tee -a ${OFILE}
+            cat /proc/${pid}/numa_maps | grep "^70" | tee ${TMPF}.numa_maps2
+            kill -SIGUSR1 $pid
+            set_return_code "EXIT"
+            return 0
+            ;;
+        *)
+            ;;
+    esac
+    return 1
+}
+
+check_test() {
+    check_kernel_message -v diff "failed"
+    check_kernel_message_nobug diff
+    check_return_code "${EXPECTED_RETURN_CODE}"
+}
+
+# inside cheker you must tee output in you own.
+check_mbind() {
+    check_test
+    check_mbind_numa_maps "700000000000"  || return 1
+    check_mbind_numa_maps "700000200000"  || return 1
+    check_mbind_numa_maps "700000400000"  || return 1
+}
+
+get_numa_maps_nodes() {
+    local numa_maps=$1
+    local vma_start=$2
+    grep "^${vma_start} " ${numa_maps} | tr ' ' '\n' | grep -E "^N[0-9]=" | tr '\n' ' '
+}
+
+check_mbind_numa_maps() {
+    local address=$1
+    local node1=$(get_numa_maps_nodes ${TMPF}.numa_maps1 ${address})
+    local node2=$(get_numa_maps_nodes ${TMPF}.numa_maps2 ${address})
+
+    count_testcount
+    if [ ! -f ${TMPF}.numa_maps1 ] || [ ! -f ${TMPF}.numa_maps2 ] ; then
+        count_failure "numa_maps file not exist."
+        return 1
+    fi
+
+    if [ "$node1" == "$node2" ] ; then
+        count_failure "vaddr ${address} is not migrated. map1=${node1}, map2=${node2}."
+        return 1
+    else
+        count_success "vaddr ${address} is migrated."
+    fi
+}
+
+prepare_mbind_fuzz() {
+    pkill -f ${MBIND_FUZZ}
+    dd if=/dev/urandom of=${TESTFILE} bs=4096 count=$[512*10]
+    mkdir -p ${WDIR}/mount
+    mount -t hugetlbfs none ${WDIR}/mount
+    prepare_test
+}
+
+cleanup_mbind_fuzz() {
+    cleanup_test
+    pkill -f ${MBIND_FUZZ}
+    rm -rf ${WDIR}/mount/*
+    echo 3 > /proc/sys/vm/drop_caches
+    sync
+    umount -f ${WDIR}/mount
+}
+
+control_mbind_fuzz() {
+    echo "start mbind_fuzz" | tee -a ${OFILE}
+    ${MBIND_FUZZ} -f ${TESTFILE} -n 10 -t 0xff > ${TMPF}.fuz.out 2>&1 &
+    local pid=$!
+    sleep 3
+    pkill -SIGUSR1 $pid
+    set_return_code EXIT
+}
+
+check_mbind_fuzz() {
+    echo "---" | tee -a ${OFILE}
+    check_test
+}
