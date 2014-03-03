@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS=-g # -Wall -Wextra
 TESTCASE_FILTER=
 
-src=mbind.c mbind_fuzz.c
+src=mbind.c mbind_fuzz.c hugepage_pingpong.c
 exe=$(src:.c=)
 srcdir=.
 dstdir=/usr/local/bin
