@@ -21,8 +21,8 @@ cleanup_test() {
 }
 
 check_test() {
-    check_kernel_message -v diff "failed"
-    check_kernel_message_nobug diff
+    check_kernel_message -v "failed"
+    check_kernel_message_nobug
     check_return_code "${EXPECTED_RETURN_CODE}"
 }
 

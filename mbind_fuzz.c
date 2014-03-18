@@ -47,7 +47,6 @@ int main(int argc, char *argv[]) {
 	int node;
 	char c;
 	char *p;
-	unsigned long memsize = 2*1024*1024;
 	int mapflag = MAP_ANONYMOUS;
 	unsigned long offset;
 	unsigned long length;
@@ -71,10 +70,12 @@ int main(int argc, char *argv[]) {
 	unsigned long HPS = 2*1024*1024;
 	unsigned long nr_hps = 1;
 	unsigned long type = 0xffff;
+	unsigned long memsize = nr * PS;
+	unsigned long hugememsize = nr_hps * HPS;
 	int oneshot = 0;
 	int sleep = 0;
 
-	while ((c = getopt(argc, argv, "p:vf:n:t:os")) != -1) {
+	while ((c = getopt(argc, argv, "p:vf:n:N:t:os")) != -1) {
 		switch(c) {
 		case 'p':
 			testpipe = optarg;
@@ -92,8 +93,12 @@ int main(int argc, char *argv[]) {
 			file = optarg;
 			break;
 		case 'n':
+			nr = strtoul(optarg, NULL, 0);
+			memsize = nr * PS;
+			break;
+		case 'N':
 			nr_hps = strtoul(optarg, NULL, 0);
-			memsize = nr_hps * HPS;
+			hugememsize = nr_hps * HPS;
 			break;
 		case 't':
 			type = strtoul(optarg, NULL, 0);
@@ -126,56 +131,56 @@ int main(int argc, char *argv[]) {
 		pmem = checked_mmap((void *)address, memsize, MMAP_PROT, mapflag, -1, 0);
 		madvise(pmem, memsize, MADV_NOHUGEPAGE);
 		memset(pmem, 'a', memsize);
-		address += memsize;
+		address = (address + hugememsize) - (address % hugememsize);
 	}
 	if (type & (1 << 1)) {
 		mapflag = MAP_PRIVATE|MAP_ANONYMOUS|MAP_HUGETLB;
-		phugetlb = checked_mmap((void *)address, memsize, MMAP_PROT, mapflag, -1, 0);
-		memset(phugetlb, 'a', memsize);
-		address += memsize;
+		phugetlb = checked_mmap((void *)address, hugememsize, MMAP_PROT, mapflag, -1, 0);
+		memset(phugetlb, 'a', hugememsize);
+		address = (address + hugememsize) - (address % hugememsize);
 	}
 	if (type & (1 << 2)) {
 		mapflag = MAP_PRIVATE|MAP_ANONYMOUS;
-		pthp = checked_mmap((void *)address, memsize, MMAP_PROT, mapflag, -1, 0);
-		memset(pthp, 'a', memsize);
-		address += memsize;
+		pthp = checked_mmap((void *)address, hugememsize, MMAP_PROT, mapflag, -1, 0);
+		memset(pthp, 'a', hugememsize);
+		address = (address + hugememsize) - (address % hugememsize);
 	}
 	if (type & (1 << 3)) {
 		fd = checked_open(file, O_RDWR);
 		mapflag = MAP_PRIVATE;
 		pfile1 = checked_mmap((void *)address, memsize, MMAP_PROT, mapflag, fd, 0);
 		memset(pfile1, 'a', memsize);
-		address += memsize;
+		address = (address + hugememsize) - (address % hugememsize);
 	}
 	if (type & (1 << 4)) {
 		hugetlbfd1 = open(hugetlbfile1, O_CREAT|O_RDWR, 0755);
 		if (hugetlbfd1 == -1)
 			errmsg("open hugetlbfs");
 		mapflag = MAP_SHARED;
-		phugetlbfile1 = checked_mmap((void *)address, memsize, MMAP_PROT, mapflag, hugetlbfd1, 0);
-		memset(phugetlbfile1, 'a', memsize);
-		address += memsize;
+		phugetlbfile1 = checked_mmap((void *)address, hugememsize, MMAP_PROT, mapflag, hugetlbfd1, 0);
+		memset(phugetlbfile1, 'a', hugememsize);
+		address = (address + hugememsize) - (address % hugememsize);
 	}
 	if (type & (1 << 5)) {
 		hugetlbfd2 = open(hugetlbfile2, O_CREAT|O_RDWR, 0755);
 		if (hugetlbfd2 == -1)
 			errmsg("open hugetlbfs");
 		mapflag = MAP_PRIVATE;
-		phugetlbfile2 = checked_mmap((void *)address, memsize, MMAP_PROT, mapflag, hugetlbfd2, 0);
-		memset(phugetlbfile2, 'a', memsize);
-		address += memsize;
+		phugetlbfile2 = checked_mmap((void *)address, hugememsize, MMAP_PROT, mapflag, hugetlbfd2, 0);
+		memset(phugetlbfile2, 'a', hugememsize);
+		address = (address + hugememsize) - (address % hugememsize);
 	}
 	if (type & (1 << 6)) {
 		pshmhugetlb = alloc_shm_hugepage(memsize);
-		memset(pshmhugetlb, 'a', memsize);
-		address += memsize;
+		memset(pshmhugetlb, 'a', hugememsize);
+		address = (address + hugememsize) - (address % hugememsize);
 	}
 	if (type & (1 << 7)) {
 		fd = checked_open(file, O_RDWR);
 		mapflag = MAP_SHARED;
 		pfile2 = checked_mmap((void *)address, memsize, MMAP_PROT, mapflag, fd, 0);
 		memset(pfile2, 'a', memsize);
-		address += memsize;
+		address = (address + hugememsize) - (address % hugememsize);
 	}
 	signal(SIGUSR1, sig_handle);
 	if (sleep)
@@ -188,8 +193,8 @@ int main(int argc, char *argv[]) {
 		if (type & (1 << 0)) {
 			node = random() % nr_nodes;
 			set_new_nodes(nodes, node);
-			offset = (random() % (memsize / PS)) * PS;
-			length = (random() % (memsize/PS - offset/PS)) * PS;
+			offset = (random() % nr) * PS;
+			length = (random() % (nr - offset/PS)) * PS;
 			offset = PS;
 			length = PS;
 			printf("1: node:%x, offset:%x, length:%x\n", node, offset, length);
@@ -198,8 +203,8 @@ int main(int argc, char *argv[]) {
 		if (type & (1 << 1)) {
 			node = random() % nr_nodes;
 			set_new_nodes(nodes, random() & nr_nodes);
-			offset = (random() % (memsize / HPS)) * HPS;
-			length = (random() % (memsize/HPS - offset/HPS)) * HPS;
+			offset = (random() % nr_hps) * HPS;
+			length = (random() % (nr_hps - offset/HPS)) * HPS;
 			offset = HPS;
 			length = HPS;
 			printf("2: node:%x, offset:%x, length:%x\n", node, offset, length);
@@ -208,48 +213,48 @@ int main(int argc, char *argv[]) {
 		if (type & (1 << 2)) {
 			node = random() % nr_nodes;
 			set_new_nodes(nodes, random() & nr_nodes);
-			offset = (random() % (memsize / PS)) * PS;
-			length = (random() % (memsize/PS - offset/PS)) * PS;
+			offset = (random() % nr) * PS;
+			length = (random() % (nr - offset/PS)) * PS;
 			printf("3: node:%x, offset:%x, length:%x\n", node, offset, length);
 			checked_mbind(pthp + offset, length, nodes);
 		}
 		if (type & (1 << 3)) {
 			node = random() % nr_nodes;
 			set_new_nodes(nodes, random() & nr_nodes);
-			offset = (random() % (memsize / PS)) * PS;
-			length = (random() % (memsize/PS - offset/PS)) * PS;
+			offset = (random() % nr) * PS;
+			length = (random() % (nr - offset/PS)) * PS;
 			printf("4: node:%x, offset:%x, length:%x\n", node, offset, length);
 			checked_mbind(pfile1 + offset, length, nodes);
 		}
 		if (type & (1 << 4)) {
 			node = random() % nr_nodes;
 			set_new_nodes(nodes, random() & nr_nodes);
-			offset = (random() % (memsize / HPS)) * HPS;
-			length = (random() % (memsize/HPS - offset/HPS)) * HPS;
+			offset = (random() % nr_hps) * HPS;
+			length = (random() % (nr_hps - offset/HPS)) * HPS;
 			printf("5: node:%x, offset:%x, length:%x\n", node, offset, length);
 			checked_mbind(phugetlbfile1 + offset, length, nodes);
 		}
 		if (type & (1 << 5)) {
 			node = random() % nr_nodes;
 			set_new_nodes(nodes, random() & nr_nodes);
-			offset = (random() % (memsize / HPS)) * HPS;
-			length = (random() % (memsize/HPS - offset/HPS)) * HPS;
+			offset = (random() % nr_hps) * HPS;
+			length = (random() % (nr_hps - offset/HPS)) * HPS;
 			printf("6: node:%x, offset:%x, length:%x\n", node, offset, length);
 			checked_mbind(phugetlbfile2 + offset, length, nodes);
 		}
 		if (type & (1 << 6)) {
 			node = random() % nr_nodes;
 			set_new_nodes(nodes, random() & nr_nodes);
-			offset = (random() % (memsize / HPS)) * HPS;
-			length = (random() % (memsize/HPS - offset/HPS)) * HPS;
+			offset = (random() % nr_hps) * HPS;
+			length = (random() % (nr_hps - offset/HPS)) * HPS;
 			printf("7: node:%x, offset:%x, length:%x\n", node, offset, length);
 			checked_mbind(pshmhugetlb + offset, length, nodes);
 		}
 		if (type & (1 << 7)) {
 			node = random() % nr_nodes;
 			set_new_nodes(nodes, random() & nr_nodes);
-			offset = (random() % (memsize / PS)) * PS;
-			length = (random() % (memsize/PS - offset/PS)) * PS;
+			offset = (random() % nr) * PS;
+			length = (random() % (nr - offset/PS)) * PS;
 			printf("8: node:%x, offset:%x, length:%x\n", node, offset, length);
 			checked_mbind(pfile2 + offset, length, nodes);
 		}
@@ -257,17 +262,17 @@ int main(int argc, char *argv[]) {
 		if (type & (1 << 0))
 			memset(pmem, 'a', memsize);
 		if (type & (1 << 1))
-			memset(phugetlb, 'a', memsize);
+			memset(phugetlb, 'a', hugememsize);
 		if (type & (1 << 2))
-			memset(pthp, 'a', memsize);
+			memset(pthp, 'a', hugememsize);
 		if (type & (1 << 3))
 			memset(pfile1, 'a', memsize);
 		if (type & (1 << 4))
-			memset(phugetlbfile1, 'a', memsize);
+			memset(phugetlbfile1, 'a', hugememsize);
 		if (type & (1 << 5))
-			memset(phugetlbfile2, 'a', memsize);
+			memset(phugetlbfile2, 'a', hugememsize);
 		if (type & (1 << 6))
-			memset(pshmhugetlb, 'a', memsize);
+			memset(pshmhugetlb, 'a', hugememsize);
 		if (type & (1 << 7))
 			memset(pfile2, 'a', memsize);
 		if (oneshot)
@@ -278,17 +283,17 @@ int main(int argc, char *argv[]) {
 	if (type & (1 << 0))
 		munmap(pmem, memsize);
 	if (type & (1 << 1))
-		munmap(phugetlb, memsize);
+		munmap(phugetlb, hugememsize);
 	if (type & (1 << 2))
-		munmap(pthp, memsize);
+		munmap(pthp, hugememsize);
 	if (type & (1 << 3))
 		munmap(pfile1, memsize);
 	if (type & (1 << 4))
-		munmap(phugetlbfile1, memsize);
+		munmap(phugetlbfile1, hugememsize);
 	if (type & (1 << 5))
-		munmap(phugetlbfile2, memsize);
+		munmap(phugetlbfile2, hugememsize);
 	if (type & (1 << 6)) {
-		munmap(pshmhugetlb, memsize);
+		munmap(pshmhugetlb, hugememsize);
 		free_shm_hugepage(shmkey, pshmhugetlb);
 	}
 	if (type & (1 << 7))

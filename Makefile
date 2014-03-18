@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS=-g # -Wall -Wextra
 TESTCASE_FILTER=
 
-src=mbind.c mbind_fuzz.c hugepage_pingpong.c
+src=mbind.c mbind_fuzz.c hugepage_pingpong.c mbind_unmap_race.c
 exe=$(src:.c=)
 srcdir=.
 dstdir=/usr/local/bin
@@ -11,12 +11,16 @@ dstexe=$(addprefix $(dstdir)/,$(exe))
 OPT=-DDEBUG
 LIBOPT=-lnuma # -lcgroup
 
-all: get_test_core $(exe)
+all: get_test_core get_rpms $(exe)
 %: %.c
 	$(CC) $(CFLAGS) -o $@ $^ $(OPT) $(LIBOPT)
 
 get_test_core:
 	git clone https://github.com/Naoya-Horiguchi/test_core || true
+	@true
+
+get_rpms:
+	yum install -y numactl*
 	@true
 
 install: $(exe)

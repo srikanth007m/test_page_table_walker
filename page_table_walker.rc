@@ -13,10 +13,26 @@ TEST_CONTROLLER=control_mbind
 TEST_CHECKER=check_mbind
 do_test_sync
 
-TEST_TITLE='mbind_test_fuzz'
+TEST_TITLE='mbind_fuzz'
 TEST_PREPARE=prepare_mbind_fuzz
 TEST_CHECKER=cleanup_mbind_fuzz
 TEST_CONTROLLER=control_mbind_fuzz
+TEST_CHECKER=check_mbind_fuzz
+EXPECTED_RETURN_CODE="START EXIT"
+do_test_async
+
+TEST_TITLE='mbind_fuzz_normal_heavy'
+TEST_PREPARE=prepare_mbind_fuzz
+TEST_CHECKER=cleanup_mbind_fuzz
+TEST_CONTROLLER=control_mbind_fuzz_normal_heavy
+TEST_CHECKER=check_mbind_fuzz
+EXPECTED_RETURN_CODE="START EXIT"
+do_test_async
+
+TEST_TITLE='mbind_unmap_race'
+TEST_PREPARE=prepare_mbind_fuzz
+TEST_CHECKER=cleanup_mbind_fuzz
+TEST_CONTROLLER=control_mbind_unmap_race
 TEST_CHECKER=check_mbind_fuzz
 EXPECTED_RETURN_CODE="START EXIT"
 do_test_async

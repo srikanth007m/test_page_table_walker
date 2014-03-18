@@ -8,8 +8,10 @@ fi
 # Main test programs
 MBIND=$(dirname $(readlink -f $BASH_SOURCE))/mbind
 MBIND_FUZZ=$(dirname $(readlink -f $BASH_SOURCE))/mbind_fuzz
+MBIND_UNMAP=$(dirname $(readlink -f $BASH_SOURCE))/mbind_unmap_race
 [ ! -x "$MBIND" ] && echo "${MBIND} not found." >&2 && exit 1
 [ ! -x "$MBIND_FUZZ" ] && echo "${MBIND_FUZZ} not found." >&2 && exit 1
+[ ! -x "$MBIND_UNMAP" ] && echo "${MBIND_UNMAP} not found." >&2 && exit 1
 TESTFILE=${WDIR}/testfile
 sysctl vm.nr_hugepages=200
 
@@ -51,8 +53,8 @@ control_mbind() {
 }
 
 check_test() {
-    check_kernel_message -v diff "failed"
-    check_kernel_message_nobug diff
+    check_kernel_message -v "failed"
+    check_kernel_message_nobug
     check_return_code "${EXPECTED_RETURN_CODE}"
 }
 
@@ -91,6 +93,7 @@ check_mbind_numa_maps() {
 
 prepare_mbind_fuzz() {
     pkill -f ${MBIND_FUZZ}
+    pkill -f ${MBIND_UNMAP}
     dd if=/dev/urandom of=${TESTFILE} bs=4096 count=$[512*10]
     mkdir -p ${WDIR}/mount
     mount -t hugetlbfs none ${WDIR}/mount
@@ -100,6 +103,7 @@ prepare_mbind_fuzz() {
 cleanup_mbind_fuzz() {
     cleanup_test
     pkill -f ${MBIND_FUZZ}
+    pkill -f ${MBIND_UNMAP}
     rm -rf ${WDIR}/mount/*
     echo 3 > /proc/sys/vm/drop_caches
     sync
@@ -108,7 +112,7 @@ cleanup_mbind_fuzz() {
 
 control_mbind_fuzz() {
     echo "start mbind_fuzz" | tee -a ${OFILE}
-    ${MBIND_FUZZ} -f ${TESTFILE} -n 10 -t 0xff > ${TMPF}.fuz.out 2>&1 &
+    ${MBIND_FUZZ} -f ${TESTFILE} -n 10 -N 10 -t 0xff > ${TMPF}.fuz.out 2>&1 &
     local pid=$!
     sleep 3
     pkill -SIGUSR1 $pid
@@ -118,4 +122,32 @@ control_mbind_fuzz() {
 check_mbind_fuzz() {
     echo "---" | tee -a ${OFILE}
     check_test
+}
+
+control_mbind_fuzz_normal_heavy() {
+    echo "start mbind_fuzz_normal_heavy" | tee -a ${OFILE}
+    local threads=100
+    local nr=1000
+    local type=0x80
+    for i in $(seq $threads) ; do
+        ${MBIND_FUZZ} -f ${TESTFILE} -n $nr -t $type > ${TMPF}.fuz.out 2>&1 &
+        echo "pid $!"
+    done
+    sleep 10
+    pkill -SIGUSR1 -f ${MBIND_FUZZ}
+    set_return_code EXIT
+}
+
+control_mbind_unmap_race() {
+    echo "start mbind_unmap_race" | tee -a ${OFILE}
+    local threads=10
+    local nr=1000
+    local type=0x80
+    for i in $(seq $threads) ; do
+        ${MBIND_UNMAP} -f ${TESTFILE} -n $nr -N 2 -t $type > ${TMPF}.fuz.out 2>&1 &
+        echo "pid $!"
+    done
+    sleep 10
+    pkill -SIGUSR1 -f ${MBIND_UNMAP}
+    set_return_code EXIT
 }
