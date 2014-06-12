@@ -24,6 +24,14 @@ do_test_async
 
 . setup_mincore.sh
 
+TEST_TITLE='mincore'
+TEST_PROGRAM="${MINCORE} -f ${TMPF}.holefile"
+TEST_PREPARE=prepare_mincore
+TEST_CHECKER=cleanup_mincore
+TEST_CONTROLLER=control_mincore
+TEST_CHECKER=check_mincore
+EXPECTED_RETURN_CODE="START EXIT"
+do_test_sync
 
 . setup_mbind.sh
 

@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS=-g # -Wall -Wextra
 TESTCASE_FILTER=
 
-src=mbind.c mbind_fuzz.c hugepage_pingpong.c mbind_unmap_race.c malloc_madv_willneed.c
+src=mbind.c mbind_fuzz.c hugepage_pingpong.c mbind_unmap_race.c malloc_madv_willneed.c mincore.c
 exe=$(src:.c=)
 srcdir=.
 dstdir=/usr/local/bin
