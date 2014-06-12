@@ -171,7 +171,8 @@ int main(int argc, char *argv[]) {
 		address = (address + hugememsize) - (address % hugememsize);
 	}
 	if (type & (1 << 6)) {
-		pshmhugetlb = alloc_shm_hugepage(memsize);
+		pshmhugetlb = alloc_shm_hugepage(hugememsize);
+		printf("%x\n", pshmhugetlb);
 		memset(pshmhugetlb, 'a', hugememsize);
 		address = (address + hugememsize) - (address % hugememsize);
 	}
@@ -205,8 +206,6 @@ int main(int argc, char *argv[]) {
 			set_new_nodes(nodes, random() & nr_nodes);
 			offset = (random() % nr_hps) * HPS;
 			length = (random() % (nr_hps - offset/HPS)) * HPS;
-			offset = HPS;
-			length = HPS;
 			printf("2: node:%x, offset:%x, length:%x\n", node, offset, length);
 			checked_mbind(phugetlb + offset, length, nodes);
 		}
