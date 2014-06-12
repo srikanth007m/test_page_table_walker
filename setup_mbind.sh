@@ -15,6 +15,9 @@ MBIND_UNMAP=$(dirname $(readlink -f $BASH_SOURCE))/mbind_unmap_race
 TESTFILE=${WDIR}/testfile
 sysctl vm.nr_hugepages=200
 
+gcc -o test_core/lib/page-types -I ${KERNEL_SRC}/tools/lib/ test_core/lib/page-types.c ${KERNEL_SRC}/tools/lib/api/libapikfs.a 
+PAGETYPES=$(dirname $(readlink -f $BASH_SOURCE))/test_core/lib/page-types
+
 prepare_test() {
     get_kernel_message_before
 }
@@ -104,6 +107,7 @@ cleanup_mbind_fuzz() {
     cleanup_test
     pkill -f ${MBIND_FUZZ}
     pkill -f ${MBIND_UNMAP}
+    ipcs -m | cut -f2 -d' ' | egrep '[0-9]' | xargs ipcrm shm > /dev/null 2>&1
     rm -rf ${WDIR}/mount/*
     echo 3 > /proc/sys/vm/drop_caches
     sync
@@ -115,6 +119,10 @@ control_mbind_fuzz() {
     ${MBIND_FUZZ} -f ${TESTFILE} -n 10 -N 10 -t 0xff > ${TMPF}.fuz.out 2>&1 &
     local pid=$!
     sleep 3
+    ${PAGETYPES} -p $pid     # > /dev/null
+    cat /proc/$pid/numa_maps # > /dev/null
+    cat /proc/$pid/smaps     # > /dev/null
+    cat /proc/$pid/maps      # > /dev/null
     pkill -SIGUSR1 $pid
     set_return_code EXIT
 }

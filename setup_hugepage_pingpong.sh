@@ -18,6 +18,7 @@ prepare_test() {
 cleanup_test() {
     get_kernel_message_after
     get_kernel_message_diff
+    ipcs -s -t | cut -f1 -d' ' | egrep '[0-9]' | xargs ipcrm sem > /dev/null 2>&1
 }
 
 check_test() {
@@ -38,10 +39,10 @@ control_hugepage_pingpong() {
 
 control_hugepage_pingpong_race() {
     echo "start 2 hugepage_pingpong processes" | tee -a ${OFILE}
-    ${HUGEPAGE_PINGPONG} -n 1 -t 0xff > ${TMPF}.fuz.out1 2>&1 &
+    ${HUGEPAGE_PINGPONG} -n 1 -t 0x1 > ${TMPF}.fuz.out1 2>&1 &
     local pid1=$!
     echo "pid $pid1"
-    ${HUGEPAGE_PINGPONG} -n 1 -t 0xff > ${TMPF}.fuz.out2 2>&1 &
+    ${HUGEPAGE_PINGPONG} -n 1 -t 0x1 > ${TMPF}.fuz.out2 2>&1 &
     local pid2=$!
     echo "pid $pid2"
     sleep 10

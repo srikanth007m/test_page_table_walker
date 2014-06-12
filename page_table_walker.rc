@@ -4,6 +4,27 @@ KERNEL_SRC=/src/linux-dev
 DEFAULT_TEST_PREPARE=prepare_test
 DEFAULT_TEST_CHECKER=cleanup_test
 
+. setup_memcg.sh
+
+TEST_TITLE='memcg_move_task'
+TEST_PREPARE=prepare_memcg
+TEST_CHECKER=cleanup_memcg
+TEST_CONTROLLER=control_memcg
+TEST_CHECKER=check_memcg
+EXPECTED_RETURN_CODE="START EXIT"
+do_test_async
+
+TEST_TITLE='force_swapin_readahead'
+TEST_PREPARE=prepare_force_swapin_readahead
+TEST_CHECKER=cleanup_force_swapin_readahead
+TEST_CONTROLLER=control_force_swapin_readahead
+TEST_CHECKER=check_force_swapin_readahead
+EXPECTED_RETURN_CODE="START EXIT"
+do_test_async
+
+. setup_mincore.sh
+
+
 . setup_mbind.sh
 
 TEST_TITLE='mbind_test'
@@ -46,6 +67,8 @@ TEST_CONTROLLER=control_hugepage_pingpong
 TEST_CHECKER=check_hugepage_pingpong
 EXPECTED_RETURN_CODE="START EXIT"
 do_test_async
+
+break
 
 TEST_TITLE='hugepage_pingpong_race'
 TEST_PREPARE=prepare_hugepage_pingpong
