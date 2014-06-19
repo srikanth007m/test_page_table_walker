@@ -14,8 +14,11 @@ prepare_test() {
 }
 
 prepare_memcg() {
-    mkdir $MEMCGDIR/test1
-    mkdir $MEMCGDIR/test2
+    pkill -9 sleep
+    cgdelete memory:test1
+    cgdelete memory:test2
+    cgcreate -g memory:test1
+    cgcreate -g memory:test2
     echo 1 > $MEMCGDIR/test1/memory.move_charge_at_immigrate
     echo 1 > $MEMCGDIR/test2/memory.move_charge_at_immigrate
     prepare_test
@@ -27,8 +30,9 @@ cleanup_test() {
 }
 
 cleanup_memcg() {
-    rm -rf $MEMCGDIR/test1
-    rm -rf $MEMCGDIR/test2
+    pkill -9 sleep
+    cgdelete memory:test1
+    cgdelete memory:test2
     cleanup_test
 }
 
@@ -42,7 +46,7 @@ control_memcg() {
     cat $MEMCGDIR/test2/tasks > $MEMCGDIR/test1/tasks || set_return_code MOVE_FAIL
     cat $MEMCGDIR/test1/tasks > $MEMCGDIR/test2/tasks || set_return_code MOVE_FAIL
     cat $MEMCGDIR/test2/tasks > $MEMCGDIR/test1/tasks || set_return_code MOVE_FAIL
-    pkill sleep
+    pkill -9 sleep
     set_return_code "EXIT"
     return 0
 }
