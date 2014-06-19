@@ -65,8 +65,9 @@ int main(int argc, char *argv[]) {
 	char *file = NULL;
 	char *vec;
 	uint64_t pme[1024];
+	unsigned long type = 0xffff;
 
-	while ((c = getopt(argc, argv, "p:n:vf:")) != -1) {
+	while ((c = getopt(argc, argv, "p:n:vf:t:")) != -1) {
 		switch(c) {
 		case 'p':
 			testpipe = optarg;
@@ -87,105 +88,133 @@ int main(int argc, char *argv[]) {
 		case 'f':
 			file = optarg;
 			break;
+		case 't':
+			type = strtoul(optarg, NULL, 0);
+			break;
 		default:
 			errmsg("invalid option\n");
 			break;
 		}
 	}
 
-	mapflag = MAP_PRIVATE|MAP_ANONYMOUS;
-	pmem = checked_mmap((void *)address, memsize, MMAP_PROT, mapflag, -1, 0);
-	madvise(pmem, memsize, MADV_NOHUGEPAGE);
-	memset(pmem, 'a', memsize/2);
+	if (type & (1 << 0)) {
+		mapflag = MAP_PRIVATE|MAP_ANONYMOUS;
+		pmem = checked_mmap((void *)address, memsize, MMAP_PROT, mapflag, -1, 0);
+		madvise(pmem, memsize, MADV_NOHUGEPAGE);
+		memset(pmem, 'a', memsize/2);
+		address += memsize;
+	}
 
-	address += memsize;
-	mapflag = MAP_PRIVATE|MAP_ANONYMOUS|MAP_HUGETLB;
-	phugetlb = checked_mmap((void *)address, memsize, MMAP_PROT, mapflag, -1, 0);
-	memset(phugetlb, 'a', 1);
+	if (type & (1 << 1)) {
+		mapflag = MAP_PRIVATE|MAP_ANONYMOUS|MAP_HUGETLB;
+		phugetlb = checked_mmap((void *)address, memsize, MMAP_PROT, mapflag, -1, 0);
+		memset(phugetlb, 'a', 1);
+		address += memsize;
+	}
 
-	address += memsize;
-	mapflag = MAP_PRIVATE|MAP_ANONYMOUS;
-	pthp = checked_mmap((void *)address, memsize, MMAP_PROT, mapflag, -1, 0);
-	memset(pthp, 'a', 1);
-	/* check we really have thp. */
-	for (offset = 0; offset < memsize; offset += HPS) {
-		if (!check_kpflags(pthp + offset, KPF_THP))
-			errmsg("address 0x%x is not backed by THP.",
-			       pthp + offset);
+	if (type & (1 << 2)) {
+		mapflag = MAP_PRIVATE|MAP_ANONYMOUS;
+		pthp = checked_mmap((void *)address, memsize, MMAP_PROT, mapflag, -1, 0);
+		memset(pthp, 'a', 1);
+		/* check we really have thp. */
+		for (offset = 0; offset < memsize; offset += HPS) {
+			if (!check_kpflags(pthp + offset, KPF_THP))
+				errmsg("address 0x%x is not backed by THP.",
+				       pthp + offset);
+		}
+		address += memsize;
 	}
 
 	/* unaligned vma */
-	address += memsize;
-	mapflag = MAP_PRIVATE|MAP_ANONYMOUS;
-	pmem_unaligned = checked_mmap((void *)address, memsize, MMAP_PROT, mapflag, -1, 0);
-	madvise(pmem_unaligned, memsize, MADV_NOHUGEPAGE);
-	munmap(pmem_unaligned, memsize/4);
-	munmap(pmem_unaligned + memsize*3/4, memsize/2);
-	pmem_unaligned = pmem_unaligned + memsize/4;
-	memset(pmem_unaligned, 'a', memsize/2/2);
-
-	/* hole file */
-	if (file) {
+	if (type & (1 << 3)) {
+		mapflag = MAP_PRIVATE|MAP_ANONYMOUS;
+		pmem_unaligned = checked_mmap((void *)address, memsize, MMAP_PROT, mapflag, -1, 0);
+		madvise(pmem_unaligned, memsize, MADV_NOHUGEPAGE);
+		munmap(pmem_unaligned, memsize/4);
+		munmap(pmem_unaligned + memsize*3/4, memsize/2);
+		pmem_unaligned = pmem_unaligned + memsize/4;
+		memset(pmem_unaligned, 'a', memsize/2/2);
 		address += memsize;
-		mapflag = MAP_SHARED;
-		fd = checked_open(file, O_RDWR);
-		pfile = checked_mmap((void *)address, 4*memsize, MMAP_PROT, mapflag, fd, 0);
-		memset(pfile, 'a', PS);
-		memset(pfile + 4*memsize-2*PS, 'a', PS);
 	}
 
-	/* small vmas in a single pmd */
-	address += memsize*4;
-	printf("%lx\n", address);
-	mapflag = MAP_PRIVATE|MAP_ANONYMOUS;
-	psmall1 = checked_mmap((void *)address, 2*PS, MMAP_PROT, mapflag, -1, 0);
-	psmall2 = checked_mmap((void *)address+4*PS, 2*PS, MMAP_PROT, mapflag, -1, 0);
-	memset(psmall1, 'a', PS);
-	memset(psmall2, 'a', PS);
+	if (type & (1 << 4)) {
+		/* hole file */
+		if (file) {
+			mapflag = MAP_SHARED;
+			fd = checked_open(file, O_RDWR);
+			pfile = checked_mmap((void *)address, 4*memsize, MMAP_PROT, mapflag, fd, 0);
+			memset(pfile, 'a', PS);
+			memset(pfile + 4*memsize-2*PS, 'a', PS);
+			address += memsize*4;
+		}
+	}
+
+	if (type & (1 << 5)) {
+		/* small vmas in a single pmd */
+		printf("%lx\n", address);
+		mapflag = MAP_PRIVATE|MAP_ANONYMOUS;
+		psmall1 = checked_mmap((void *)address, 2*PS, MMAP_PROT, mapflag, -1, 0);
+		psmall2 = checked_mmap((void *)address+4*PS, 2*PS, MMAP_PROT, mapflag, -1, 0);
+		memset(psmall1, 'a', PS);
+		memset(psmall2, 'a', PS);
+		address += memsize;
+	}
 
 	signal(SIGUSR1, sig_handle_flag);
 
 	vec = checked_malloc(4*memsize/PS);
-	checked_mincore(pmem, memsize, vec);
-	show_mincore_map("mincore1", memsize, vec);
-	checked_mincore(phugetlb, memsize, vec);
-	show_mincore_map("mincore2", memsize, vec);
-	checked_mincore(pthp, memsize, vec);
-	show_mincore_map("mincore3", memsize, vec);
-	checked_mincore(pmem_unaligned, memsize/2, vec);
-	show_mincore_map("mincore4", memsize/2, vec);
-	if (file) {
-		checked_mincore(pfile, 4*memsize, vec);
-		show_mincore_map("mincore5", 4*memsize, vec);
+	if (type & (1 << 0)) {
+		checked_mincore(pmem, memsize, vec);
+		show_mincore_map("mincore1", memsize, vec);
 	}
-	checked_mincore(psmall1, 2*PS, vec);
-	show_mincore_map("mincore6", 2*PS, vec);
-	checked_mincore(psmall2, 2*PS, vec);
-	show_mincore_map("mincore7", 2*PS, vec);
+	if (type & (1 << 1)) {
+		checked_mincore(phugetlb, memsize, vec);
+		show_mincore_map("mincore2", memsize, vec);
+	}
+	if (type & (1 << 2)) {
+		checked_mincore(pthp, memsize, vec);
+		show_mincore_map("mincore3", memsize, vec);
+	}
+	if (type & (1 << 3)) {
+		checked_mincore(pmem_unaligned, memsize/2, vec);
+		show_mincore_map("mincore4", memsize/2, vec);
+	}
+	if (type & (1 << 4)) {
+		if (file) {
+			checked_mincore(pfile, 4*memsize, vec);
+			show_mincore_map("mincore5", 4*memsize, vec);
+		}
+	}
+	if (type & (1 << 5)) {
+		checked_mincore(psmall1, 2*PS, vec);
+		show_mincore_map("mincore6", 2*PS, vec);
+		checked_mincore(psmall2, 2*PS, vec);
+		show_mincore_map("mincore7", 2*PS, vec);
+	}
 
 	pprintf("entering busy loop\n");
 	while (flag) {
 		usleep(1000);
-		memset(pmem, 'a', memsize);
-		memset(phugetlb, 'a', memsize);
-		memset(pmem_unaligned, 'a', memsize/2);
-		if (file) {
-			memset(pfile, 'a', 2*PS);
-			memset(pfile + 4*memsize-2*PS, 'a', 2*PS);
+		if (type & (1 << 0))
+			memset(pmem, 'a', memsize);
+		if (type & (1 << 1))
+			memset(phugetlb, 'a', memsize);
+		if (type & (1 << 2))
+			memset(pthp, 'a', memsize);
+		if (type & (1 << 3))
+			memset(pmem_unaligned, 'a', memsize/2);
+		if (type & (1 << 4)) {
+			if (file) {
+				memset(pfile, 'a', 2*PS);
+				memset(pfile + 4*memsize-2*PS, 'a', 2*PS);
+			}
 		}
-		memset(psmall1, 'a', PS);
-		memset(psmall2, 'a', PS);
+		if (type & (1 << 5)) {
+			memset(psmall1, 'a', PS);
+			memset(psmall2, 'a', PS);
+		}
 	}
 
 	pprintf_wait(SIGUSR1, "mincore exit\n");
-	munmap(pmem, memsize);
-	munmap(phugetlb, memsize);
-	munmap(pthp, memsize);
-	if (file) {
-		munmap(pmem_unaligned, memsize/2);
-		munmap(pfile, 4*memsize);
-	}
-	munmap(psmall1, PS);
-	munmap(psmall2, PS);
 	return 0;
 }
