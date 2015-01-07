@@ -8,9 +8,6 @@ fi
 MINCORE=$(dirname $(readlink -f $BASH_SOURCE))/mincore
 [ ! -x "$MINCORE" ] && echo "${MINCORE} not found." >&2 && exit 1
 
-gcc -o test_core/lib/page-types -I ${KERNEL_SRC}/tools/lib/ test_core/lib/page-types.c ${KERNEL_SRC}/tools/lib/api/libapikfs.a
-PAGETYPES=$(dirname $(readlink -f $BASH_SOURCE))/test_core/lib/page-types
-
 echo always > /sys/kernel/mm/transparent_hugepage/enabled
 
 prepare_test() {

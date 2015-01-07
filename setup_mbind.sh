@@ -15,9 +15,6 @@ MBIND_UNMAP=$(dirname $(readlink -f $BASH_SOURCE))/mbind_unmap_race
 TESTFILE=${WDIR}/testfile
 sysctl vm.nr_hugepages=200
 
-gcc -o test_core/lib/page-types -I ${KERNEL_SRC}/tools/lib/ test_core/lib/page-types.c ${KERNEL_SRC}/tools/lib/api/libapikfs.a 
-PAGETYPES=$(dirname $(readlink -f $BASH_SOURCE))/test_core/lib/page-types
-
 prepare_test() {
     get_kernel_message_before
 }
@@ -139,9 +136,9 @@ control_mbind_fuzz_normal_heavy() {
     local type=0x80
     for i in $(seq $threads) ; do
         ${MBIND_FUZZ} -f ${TESTFILE} -n $nr -t $type > ${TMPF}.fuz.out 2>&1 &
-        echo "pid $!"
+        # echo "pid $!"
     done
-    sleep 10
+    sleep 5
     pkill -SIGUSR1 -f ${MBIND_FUZZ}
     set_return_code EXIT
 }
