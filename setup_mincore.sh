@@ -17,6 +17,7 @@ prepare_test() {
 prepare_mincore() {
     dd if=/dev/zero of=${TMPF}.holefile bs=4096 count=2 > /dev/null 2>&1
     dd if=/dev/zero of=${TMPF}.holefile bs=4096 count=2 seek=2046 > /dev/null 2>&1
+    sysctl vm.nr_hugepages=10
     prepare_test
 }
 
@@ -26,6 +27,7 @@ cleanup_test() {
 }
 
 cleanup_mincore() {
+    sysctl vm.nr_hugepages=0
     cleanup_test
 }
 
@@ -37,8 +39,8 @@ control_mincore() {
     echo "$line" | tee -a ${OFILE}
     case "$line" in
         "entering busy loop")
-            cat /proc/${pid}/maps | tee ${TMPF}.maps
-            ${PAGETYPES} -p ${pid} -rl | tee ${TMPF}.page-types
+            cat /proc/${pid}/maps > ${TMPF}.maps
+            ${PAGETYPES} -p ${pid} -rl > ${TMPF}.page-types
             kill -SIGUSR1 $pid
             ;;
         "mincore exit")
