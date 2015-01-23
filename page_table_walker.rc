@@ -74,3 +74,24 @@ TEST_CONTROLLER=control_mbind_unmap_race
 TEST_CHECKER=check_mbind_fuzz
 EXPECTED_RETURN_CODE="START EXIT"
 do_test_async
+
+. setup_vma_vm_pfnmap.sh
+
+TEST_TITLE='vma_vm_pfnmap'
+TEST_FLAGS=devel
+TEST_PROGRAM="${VMA_VM_PFNMAP} -n1"
+TEST_PREPARE=prepare_$TEST_TITLE
+TEST_CHECKER=cleanup_$TEST_TITLE
+TEST_CONTROLLER=control_$TEST_TITLE
+TEST_CHECKER=check_$TEST_TITLE
+EXPECTED_RETURN_CODE="START EXIT"
+do_test_sync
+
+TEST_TITLE='vma_vm_pfnmap_from_system_process'
+TEST_FLAGS=devel
+TEST_PREPARE=prepare_$TEST_TITLE
+TEST_CHECKER=cleanup_$TEST_TITLE
+TEST_CONTROLLER=control_$TEST_TITLE
+TEST_CHECKER=check_$TEST_TITLE
+EXPECTED_RETURN_CODE="START EXIT"
+do_test_async
