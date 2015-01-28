@@ -1,33 +1,37 @@
 KERNEL_SRC=/src/linux-dev
 . test_core/lib/setup_mce_tools.sh
+. test_core/lib/setup_hugetlb_base.sh
+. test_core/lib/setup_thp_base.sh
 
 DEFAULT_TEST_PREPARE=prepare_test
-DEFAULT_TEST_CHECKER=cleanup_test
+DEFAULT_TEST_CLEANUP=cleanup_test
 
 . setup_memcg.sh
 
 TEST_TITLE='memcg_move_task'
-TEST_PREPARE=prepare_memcg
-TEST_CHECKER=cleanup_memcg
-TEST_CONTROLLER=control_memcg
-TEST_CHECKER=check_memcg
-EXPECTED_RETURN_CODE="START EXIT"
+TEST_PREPARE=prepare_$TEST_TITLE
+TEST_CLEANUP=cleanup_$TEST_TITLE
+TEST_CONTROLLER=control_$TEST_TITLE
+TEST_CHECKER=check_$TEST_TITLE
+EXPECTED_RETURN_CODE="START MOVE_PASS EXIT"
 do_test_async
 
 TEST_TITLE='force_swapin_readahead'
-TEST_PREPARE=prepare_force_swapin_readahead
-TEST_CHECKER=cleanup_force_swapin_readahead
-TEST_CONTROLLER=control_force_swapin_readahead
-TEST_CHECKER=check_force_swapin_readahead
+TEST_PROGRAM="cgexec -g cpu,memory:test1 ${MALLOC_MADV_WILLNEED} -n 0x3800"
+TEST_PROGRAM="${MALLOC_MADV_WILLNEED} -n 0x3800"
+TEST_PREPARE=prepare_$TEST_TITLE
+TEST_CLEANUP=cleanup_$TEST_TITLE
+TEST_CONTROLLER=control_$TEST_TITLE
+TEST_CHECKER=check_$TEST_TITLE
 EXPECTED_RETURN_CODE="START EXIT"
-do_test_async
+do_test_sync
 
 . setup_mincore.sh
 
 TEST_TITLE='mincore'
 TEST_PROGRAM="${MINCORE} -f ${TMPF}.holefile -t 0xffff"
 TEST_PREPARE=prepare_mincore
-TEST_CHECKER=cleanup_mincore
+TEST_CLEANUP=cleanup_mincore
 TEST_CONTROLLER=control_mincore
 TEST_CHECKER=check_mincore
 EXPECTED_RETURN_CODE="START EXIT"
@@ -36,7 +40,7 @@ do_test_sync
 TEST_TITLE='mincore_hole'
 TEST_PROGRAM="${MINCORE} -f ${TMPF}.holefile"
 TEST_PREPARE=prepare_mincore
-TEST_CHECKER=cleanup_mincore
+TEST_CLEANUP=cleanup_mincore
 TEST_CONTROLLER=control_mincore
 TEST_CHECKER=check_mincore
 EXPECTED_RETURN_CODE="START EXIT"
@@ -47,29 +51,34 @@ do_test_sync
 TEST_TITLE='mbind_test'
 TEST_PROGRAM="${MBIND}"
 EXPECTED_RETURN_CODE="START EXIT"
+TEST_PREPARE=prepare_mbind
 TEST_CONTROLLER=control_mbind
+TEST_CLEANUP=cleanup_mbind
 TEST_CHECKER=check_mbind
 do_test_sync
 
 TEST_TITLE='mbind_fuzz'
+TEST_FLAGS=devel
 TEST_PREPARE=prepare_mbind_fuzz
-TEST_CHECKER=cleanup_mbind_fuzz
+TEST_CLEANUP=cleanup_mbind_fuzz
 TEST_CONTROLLER=control_mbind_fuzz
 TEST_CHECKER=check_mbind_fuzz
 EXPECTED_RETURN_CODE="START EXIT"
 do_test_async
 
 TEST_TITLE='mbind_fuzz_normal_heavy'
+TEST_FLAGS=devel
 TEST_PREPARE=prepare_mbind_fuzz
-TEST_CHECKER=cleanup_mbind_fuzz
+TEST_CLEANUP=cleanup_mbind_fuzz
 TEST_CONTROLLER=control_mbind_fuzz_normal_heavy
 TEST_CHECKER=check_mbind_fuzz
 EXPECTED_RETURN_CODE="START EXIT"
 do_test_async
 
 TEST_TITLE='mbind_unmap_race'
+TEST_FLAGS=devel
 TEST_PREPARE=prepare_mbind_fuzz
-TEST_CHECKER=cleanup_mbind_fuzz
+TEST_CLEANUP=cleanup_mbind_fuzz
 TEST_CONTROLLER=control_mbind_unmap_race
 TEST_CHECKER=check_mbind_fuzz
 EXPECTED_RETURN_CODE="START EXIT"
@@ -78,10 +87,9 @@ do_test_async
 . setup_vma_vm_pfnmap.sh
 
 TEST_TITLE='vma_vm_pfnmap'
-TEST_FLAGS=devel
 TEST_PROGRAM="${VMA_VM_PFNMAP} -n1"
 TEST_PREPARE=prepare_$TEST_TITLE
-TEST_CHECKER=cleanup_$TEST_TITLE
+TEST_CLEANUP=cleanup_$TEST_TITLE
 TEST_CONTROLLER=control_$TEST_TITLE
 TEST_CHECKER=check_$TEST_TITLE
 EXPECTED_RETURN_CODE="START EXIT"
@@ -90,7 +98,7 @@ do_test_sync
 TEST_TITLE='vma_vm_pfnmap_from_system_process'
 TEST_FLAGS=devel
 TEST_PREPARE=prepare_$TEST_TITLE
-TEST_CHECKER=cleanup_$TEST_TITLE
+TEST_CLEANUP=cleanup_$TEST_TITLE
 TEST_CONTROLLER=control_$TEST_TITLE
 TEST_CHECKER=check_$TEST_TITLE
 EXPECTED_RETURN_CODE="START EXIT"

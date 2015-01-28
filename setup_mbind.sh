@@ -13,7 +13,6 @@ MBIND_UNMAP=$(dirname $(readlink -f $BASH_SOURCE))/mbind_unmap_race
 [ ! -x "$MBIND_FUZZ" ] && echo "${MBIND_FUZZ} not found." >&2 && exit 1
 [ ! -x "$MBIND_UNMAP" ] && echo "${MBIND_UNMAP} not found." >&2 && exit 1
 TESTFILE=${WDIR}/testfile
-sysctl vm.nr_hugepages=200
 
 prepare_test() {
     get_kernel_message_before
@@ -24,6 +23,17 @@ cleanup_test() {
     get_kernel_message_diff
 }
 
+prepare_mbind() {
+    sysctl vm.nr_hugepages=200
+    prepare_test
+}
+
+cleanup_mbind() {
+    cleanup_test
+    sysctl vm.nr_hugepages=0
+    hugetlb_empty_check
+}
+
 control_mbind() {
     local pid="$1"
     local line="$2"
@@ -31,8 +41,8 @@ control_mbind() {
     echo "$line" | tee -a ${OFILE}
     case "$line" in
         "before mbind")
-            ${PAGETYPES} -p ${pid} -a 0x700000000+0x2000 -Nrl | tee -a ${OFILE}
-            cat /proc/${pid}/numa_maps | grep "^70" | tee ${TMPF}.numa_maps1
+            ${PAGETYPES} -p ${pid} -a 0x700000000+0x2000 -Nrl >> ${OFILE}
+            cat /proc/${pid}/numa_maps | grep "^70" > ${TMPF}.numa_maps1
             kill -SIGUSR1 $pid
             ;;
         "entering busy loop")
@@ -40,8 +50,8 @@ control_mbind() {
             kill -SIGUSR1 $pid
             ;;
         "mbind exit")
-            ${PAGETYPES} -p ${pid} -a 0x700000000+0x2000 -Nrl | tee -a ${OFILE}
-            cat /proc/${pid}/numa_maps | grep "^70" | tee ${TMPF}.numa_maps2
+            ${PAGETYPES} -p ${pid} -a 0x700000000+0x2000 -Nrl >> ${OFILE}
+            cat /proc/${pid}/numa_maps | grep "^70" > ${TMPF}.numa_maps2
             kill -SIGUSR1 $pid
             set_return_code "EXIT"
             return 0
@@ -92,8 +102,9 @@ check_mbind_numa_maps() {
 }
 
 prepare_mbind_fuzz() {
-    pkill -f ${MBIND_FUZZ}
-    pkill -f ${MBIND_UNMAP}
+    sysctl vm.nr_hugepages=200
+    pkill -9 -P $$ -f $(basename $MBIND_FUZZ) 2> /dev/null
+    pkill -9 -P $$ -f $(basename $MBIND_UNMAP) 2> /dev/null
     dd if=/dev/urandom of=${TESTFILE} bs=4096 count=$[512*10]
     mkdir -p ${WDIR}/mount
     mount -t hugetlbfs none ${WDIR}/mount
@@ -102,24 +113,29 @@ prepare_mbind_fuzz() {
 
 cleanup_mbind_fuzz() {
     cleanup_test
-    pkill -f ${MBIND_FUZZ}
-    pkill -f ${MBIND_UNMAP}
+    pkill -9 -P $$ -f $(basename $MBIND_FUZZ)
+    pkill -9 -P $$ -f $(basename $MBIND_UNMAP)
     ipcs -m | cut -f2 -d' ' | egrep '[0-9]' | xargs ipcrm shm > /dev/null 2>&1
+    ipcs -m | cut -f2 -d' ' | egrep '[0-9]' | xargs ipcrm -m > /dev/null 2>&1
     rm -rf ${WDIR}/mount/*
     echo 3 > /proc/sys/vm/drop_caches
     sync
     umount -f ${WDIR}/mount
+    umount -f ${WDIR}/mount
+    umount -f ${WDIR}/mount
+    umount -f ${WDIR}/mount
+    sysctl vm.nr_hugepages=0
 }
 
 control_mbind_fuzz() {
     echo "start mbind_fuzz" | tee -a ${OFILE}
     ${MBIND_FUZZ} -f ${TESTFILE} -n 10 -N 10 -t 0xff > ${TMPF}.fuz.out 2>&1 &
     local pid=$!
-    sleep 3
-    ${PAGETYPES} -p $pid     # > /dev/null
-    cat /proc/$pid/numa_maps # > /dev/null
-    cat /proc/$pid/smaps     # > /dev/null
-    cat /proc/$pid/maps      # > /dev/null
+    sleep 5
+    ${PAGETYPES} -p $pid     > /dev/null
+    cat /proc/$pid/numa_maps > /dev/null
+    cat /proc/$pid/smaps     > /dev/null
+    cat /proc/$pid/maps      > /dev/null
     pkill -SIGUSR1 $pid
     set_return_code EXIT
 }

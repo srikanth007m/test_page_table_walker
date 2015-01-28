@@ -126,60 +126,75 @@ int main(int argc, char *argv[]) {
 	gettimeofday(&tv, NULL);
 	srandom(tv.tv_usec);
 
+	/* normal anonymous */
 	if (type & (1 << 0)) {
 		mapflag = MAP_PRIVATE|MAP_ANONYMOUS;
 		pmem = checked_mmap((void *)address, memsize, MMAP_PROT, mapflag, -1, 0);
+		printf("type %x: %p\n", 1 << 0, pmem);
 		madvise(pmem, memsize, MADV_NOHUGEPAGE);
 		memset(pmem, 'a', memsize);
 		address = (address + hugememsize) - (address % hugememsize);
 	}
+	/* mmap_hugetlb */
 	if (type & (1 << 1)) {
 		mapflag = MAP_PRIVATE|MAP_ANONYMOUS|MAP_HUGETLB;
 		phugetlb = checked_mmap((void *)address, hugememsize, MMAP_PROT, mapflag, -1, 0);
+		printf("type %x: %p\n", 1 << 1, phugetlb);
 		memset(phugetlb, 'a', hugememsize);
 		address = (address + hugememsize) - (address % hugememsize);
 	}
+	/* thp */
 	if (type & (1 << 2)) {
 		mapflag = MAP_PRIVATE|MAP_ANONYMOUS;
 		pthp = checked_mmap((void *)address, hugememsize, MMAP_PROT, mapflag, -1, 0);
+		printf("type %x: %p\n", 1 << 2, pthp);
 		memset(pthp, 'a', hugememsize);
 		address = (address + hugememsize) - (address % hugememsize);
 	}
+	/* normal file private mapping */
 	if (type & (1 << 3)) {
 		fd = checked_open(file, O_RDWR);
 		mapflag = MAP_PRIVATE;
 		pfile1 = checked_mmap((void *)address, memsize, MMAP_PROT, mapflag, fd, 0);
+		printf("type %x: %p\n", 1 << 3, pfile1);
 		memset(pfile1, 'a', memsize);
 		address = (address + hugememsize) - (address % hugememsize);
 	}
+	/* file hugetlb shared */
 	if (type & (1 << 4)) {
 		hugetlbfd1 = open(hugetlbfile1, O_CREAT|O_RDWR, 0755);
 		if (hugetlbfd1 == -1)
 			errmsg("open hugetlbfs");
 		mapflag = MAP_SHARED;
 		phugetlbfile1 = checked_mmap((void *)address, hugememsize, MMAP_PROT, mapflag, hugetlbfd1, 0);
+		printf("type %x: %p\n", 1 << 4, phugetlbfile1);
 		memset(phugetlbfile1, 'a', hugememsize);
 		address = (address + hugememsize) - (address % hugememsize);
 	}
+	/* file hugetlb private */
 	if (type & (1 << 5)) {
 		hugetlbfd2 = open(hugetlbfile2, O_CREAT|O_RDWR, 0755);
 		if (hugetlbfd2 == -1)
 			errmsg("open hugetlbfs");
 		mapflag = MAP_PRIVATE;
 		phugetlbfile2 = checked_mmap((void *)address, hugememsize, MMAP_PROT, mapflag, hugetlbfd2, 0);
+		printf("type %x: %p\n", 1 << 5, phugetlbfile2);
 		memset(phugetlbfile2, 'a', hugememsize);
 		address = (address + hugememsize) - (address % hugememsize);
 	}
+	/* shm hugetlb */
 	if (type & (1 << 6)) {
 		pshmhugetlb = alloc_shm_hugepage(hugememsize);
-		printf("%x\n", pshmhugetlb);
+		printf("type %x: %p\n", 1 << 6, pshmhugetlb);
 		memset(pshmhugetlb, 'a', hugememsize);
 		address = (address + hugememsize) - (address % hugememsize);
 	}
+	/* normal file shared mapping */
 	if (type & (1 << 7)) {
 		fd = checked_open(file, O_RDWR);
 		mapflag = MAP_SHARED;
 		pfile2 = checked_mmap((void *)address, memsize, MMAP_PROT, mapflag, fd, 0);
+		printf("type %x: %p\n", 1 << 7, pfile2);
 		memset(pfile2, 'a', memsize);
 		address = (address + hugememsize) - (address % hugememsize);
 	}

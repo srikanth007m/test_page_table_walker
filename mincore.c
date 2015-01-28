@@ -143,6 +143,7 @@ int main(int argc, char *argv[]) {
 			mapflag = MAP_SHARED;
 			fd = checked_open(file, O_RDWR);
 			pfile = checked_mmap((void *)address, 4*memsize, MMAP_PROT, mapflag, fd, 0);
+			printf("pfile(for mincore5) %lx\n", pfile);
 			memset(pfile, 'a', PS);
 			memset(pfile + 4*memsize-2*PS, 'a', PS);
 			address += memsize*4;

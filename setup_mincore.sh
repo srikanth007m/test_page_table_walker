@@ -17,7 +17,8 @@ prepare_test() {
 prepare_mincore() {
     dd if=/dev/zero of=${TMPF}.holefile bs=4096 count=2 > /dev/null 2>&1
     dd if=/dev/zero of=${TMPF}.holefile bs=4096 count=2 seek=2046 > /dev/null 2>&1
-    sysctl vm.nr_hugepages=10
+    hugetlb_empty_check
+    sysctl vm.nr_hugepages=100
     prepare_test
 }
 
@@ -28,6 +29,7 @@ cleanup_test() {
 
 cleanup_mincore() {
     sysctl vm.nr_hugepages=0
+    hugetlb_empty_check
     cleanup_test
 }
 
@@ -72,7 +74,7 @@ check_mincore_map() {
     local tag="$1"
     local pattern="$2"
     count_testcount
-    grep "${tag}" ${TMPF}.mincore | grep "${pattern}" > /dev/null
+    grep "^${tag}" ${TMPF}.mincore | grep "${pattern}" > /dev/null
     if [ $? -eq 0 ] ; then
         count_success "correct mincore map in ${tag}."
         return 0
