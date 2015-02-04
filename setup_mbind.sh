@@ -6,13 +6,17 @@ if [[ "$0" =~ "$BASH_SOURCE" ]] ; then
 fi
 
 # Main test programs
-MBIND=$(dirname $(readlink -f $BASH_SOURCE))/mbind
-MBIND_FUZZ=$(dirname $(readlink -f $BASH_SOURCE))/mbind_fuzz
-MBIND_UNMAP=$(dirname $(readlink -f $BASH_SOURCE))/mbind_unmap_race
-[ ! -x "$MBIND" ] && echo "${MBIND} not found." >&2 && exit 1
-[ ! -x "$MBIND_FUZZ" ] && echo "${MBIND_FUZZ} not found." >&2 && exit 1
-[ ! -x "$MBIND_UNMAP" ] && echo "${MBIND_UNMAP} not found." >&2 && exit 1
+check_and_define_tp test_mbind
+check_and_define_tp test_mbind_fuzz
+check_and_define_tp test_mbind_unmap_race
+
 TESTFILE=${WDIR}/testfile
+
+kill_test_programs() {            
+    pkill -9 -f $test_mbind
+    pkill -9 -f $test_mbind_fuzz
+    pkill -9 -f $test_mbind_unmap_race
+}                                 
 
 check_numa_node_nr() {
     local nr_node=$(numactl -H | grep ^available: | cut -f2 -d' ')
@@ -27,9 +31,11 @@ check_numa_node_nr() {
 
 prepare_test() {
     get_kernel_message_before
+    kill_test_programs
 }
 
 cleanup_test() {
+    kill_test_programs
     get_kernel_message_after
     get_kernel_message_diff
 }

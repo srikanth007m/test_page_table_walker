@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS=-g # -Wall -Wextra
 TESTCASE_FILTER=
 
-src=mbind.c mbind_fuzz.c mbind_unmap_race.c malloc_madv_willneed.c mincore.c mbind_bug_reproducer.c vma_vm_pfnmap.c
+src=test_mbind.c test_mbind_fuzz.c test_mbind_unmap_race.c test_malloc_madv_willneed.c test_mincore.c test_mbind_bug_reproducer.c test_vma_vm_pfnmap.c
 exe=$(src:.c=)
 srcdir=.
 dstdir=/usr/local/bin

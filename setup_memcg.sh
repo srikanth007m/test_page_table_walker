@@ -11,8 +11,7 @@ if [ ! -d /sys/fs/cgroup/memory ] ; then
 fi
 
 MEMCGDIR=/sys/fs/cgroup/memory
-MALLOC_MADV_WILLNEED=$(dirname $(readlink -f $BASH_SOURCE))/malloc_madv_willneed
-[ ! -x "$MALLOC_MADV_WILLNEED" ] && echo "${MALLOC_MADV_WILLNEED} not found." >&2 && exit 1
+check_and_define_tp test_malloc_madv_willneed
 
 yum install -y libcgroup-tools
 
@@ -175,13 +174,13 @@ check_force_swapin_readahead() {
 
     FALSENEGATIVE=true
     count_testcount
-    if [ "$(grep ^Swap: $TMPF.smaps_before | awk '{print $2}')" -gt 0 ] ; then
+    if [ "$(grep ^Swap: $TMPF.smaps_before 2> /dev/null | awk '{print $2}')" -gt 0 ] ; then
         count_success "swap used"
     else
         count_failure "swap not used"
     fi
     count_testcount
-    if [ "$(grep ^Swap: $TMPF.smaps_after | awk '{print $2}')" -eq 0 ] ; then
+    if [ "$(grep ^Swap: $TMPF.smaps_after 2> /dev/null | awk '{print $2}')" -eq 0 ] ; then
         count_success "swapped in forcibly"
     else
         count_failure "swap still remains ($(grep ^Swap: $TMPF.smaps_after | awk '{print $2}') kB) after madvise(MADV_WILLNEED)"
@@ -189,8 +188,8 @@ check_force_swapin_readahead() {
     FALSENEGATIVE=false
 
     count_testcount
-    local sc1=$(grep ^SwapCached: $TMPF.meminfo_before | awk '{print $2}')
-    local sc2=$(grep ^SwapCached: $TMPF.meminfo_after | awk '{print $2}')
+    local sc1=$(grep ^SwapCached: $TMPF.meminfo_before 2> /dev/null | awk '{print $2}')
+    local sc2=$(grep ^SwapCached: $TMPF.meminfo_after 2> /dev/null | awk '{print $2}')
     if [ "$sc1" -lt "$sc2" ] ; then
         count_success "some swap data is loaded on swapcache forcibly"
     else

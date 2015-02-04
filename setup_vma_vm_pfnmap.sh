@@ -5,14 +5,19 @@ if [[ "$0" =~ "$BASH_SOURCE" ]] ; then
     exit 1
 fi
 
-VMA_VM_PFNMAP=$(dirname $(readlink -f $BASH_SOURCE))/vma_vm_pfnmap
-[ ! -x "$VMA_VM_PFNMAP" ] && echo "${VMA_VM_PFNMAP} not found." >&2 && exit 1
+check_and_define_tp test_vma_vm_pfnmap
+
+kill_test_programs() {
+    pkill -9 -f $test_vma_vm_pfnmap
+}
 
 prepare_test() {
     get_kernel_message_before
+    kill_test_programs
 }
 
 cleanup_test() {
+    kill_test_programs
     get_kernel_message_after
     get_kernel_message_diff
 }

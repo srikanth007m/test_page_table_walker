@@ -112,6 +112,7 @@ int main(int argc, char *argv[]) {
 		address += memsize;
 	}
 
+	pprintf_wait(SIGUSR1, "start check\n");
 	if (type & (1 << 2)) {
 		mapflag = MAP_PRIVATE|MAP_ANONYMOUS;
 		pthp = checked_mmap((void *)address, memsize, MMAP_PROT, mapflag, -1, 0);

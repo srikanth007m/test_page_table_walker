@@ -5,29 +5,35 @@ if [[ "$0" =~ "$BASH_SOURCE" ]] ; then
     exit 1
 fi
 
-MINCORE=$(dirname $(readlink -f $BASH_SOURCE))/mincore
-[ ! -x "$MINCORE" ] && echo "${MINCORE} not found." >&2 && exit 1
-
+check_and_define_tp test_mincore
 echo always > /sys/kernel/mm/transparent_hugepage/enabled
+
+kill_test_programs() {
+    pkill -9 -f $test_mincore
+}
 
 prepare_test() {
     get_kernel_message_before
+    kill_test_programs
 }
 
 prepare_mincore() {
     dd if=/dev/zero of=${TMPF}.holefile bs=4096 count=2 > /dev/null 2>&1
     dd if=/dev/zero of=${TMPF}.holefile bs=4096 count=2 seek=2046 > /dev/null 2>&1
-    hugetlb_empty_check
-    sysctl vm.nr_hugepages=100
+    # hugetlb_empty_check
+    set_and_check_hugetlb_pool 1000 || return 1
     prepare_test
+    grep Huge /proc/meminfo
 }
 
 cleanup_test() {
+    kill_test_programs
     get_kernel_message_after
     get_kernel_message_diff
 }
 
 cleanup_mincore() {
+    echo "--------------"
     sysctl vm.nr_hugepages=0
     hugetlb_empty_check
     cleanup_test
@@ -40,6 +46,10 @@ control_mincore() {
     echo "$line" >> ${TMPF}.mincore
     echo "$line" | tee -a ${OFILE}
     case "$line" in
+        "start check")
+            echo "-----------------sd@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+            kill -SIGUSR1 $pid
+            ;;
         "entering busy loop")
             cat /proc/${pid}/maps > ${TMPF}.maps
             ${PAGETYPES} -p ${pid} -rl > ${TMPF}.page-types
