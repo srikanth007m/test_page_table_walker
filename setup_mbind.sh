@@ -14,6 +14,17 @@ MBIND_UNMAP=$(dirname $(readlink -f $BASH_SOURCE))/mbind_unmap_race
 [ ! -x "$MBIND_UNMAP" ] && echo "${MBIND_UNMAP} not found." >&2 && exit 1
 TESTFILE=${WDIR}/testfile
 
+check_numa_node_nr() {
+    local nr_node=$(numactl -H | grep ^available: | cut -f2 -d' ')
+    if [ "$nr_node" -gt 1 ] ; then
+        echo "System has $nr_node NUMA node."
+        return 0
+    else
+        echo "System is not a NUMA system."
+        return 1
+    fi
+}
+
 prepare_test() {
     get_kernel_message_before
 }
@@ -24,6 +35,7 @@ cleanup_test() {
 }
 
 prepare_mbind() {
+    check_numa_node_nr || return 1
     sysctl vm.nr_hugepages=200
     prepare_test
 }
@@ -102,6 +114,7 @@ check_mbind_numa_maps() {
 }
 
 prepare_mbind_fuzz() {
+    check_numa_node_nr || return 1
     sysctl vm.nr_hugepages=200
     pkill -9 -P $$ -f $(basename $MBIND_FUZZ) 2> /dev/null
     pkill -9 -P $$ -f $(basename $MBIND_UNMAP) 2> /dev/null
