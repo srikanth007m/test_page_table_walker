@@ -16,15 +16,17 @@ kill_test_programs() {
     pkill -9 -f $test_mbind
     pkill -9 -f $test_mbind_fuzz
     pkill -9 -f $test_mbind_unmap_race
+    return 0
 }                                 
 
 check_numa_node_nr() {
     local nr_node=$(numactl -H | grep ^available: | cut -f2 -d' ')
+
     if [ "$nr_node" -gt 1 ] ; then
-        echo "System has $nr_node NUMA node."
+        echo "System has $nr_node NUMA node." | tee -a ${OFILE}
         return 0
     else
-        echo "System is not a NUMA system."
+        echo "System is not a NUMA system." | tee -a ${OFILE}
         return 1
     fi
 }

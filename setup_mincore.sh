@@ -10,6 +10,7 @@ echo always > /sys/kernel/mm/transparent_hugepage/enabled
 
 kill_test_programs() {
     pkill -9 -f $test_mincore
+    return 0
 }
 
 prepare_test() {
@@ -32,7 +33,6 @@ cleanup_test() {
 }
 
 cleanup_mincore() {
-    echo "--------------"
     sysctl vm.nr_hugepages=0
     hugetlb_empty_check
     cleanup_test
@@ -46,7 +46,6 @@ control_mincore() {
     echo "$line" | tee -a ${OFILE}
     case "$line" in
         "start check")
-            echo "-----------------sd@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
             kill -SIGUSR1 $pid
             ;;
         "entering busy loop")

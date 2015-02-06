@@ -9,6 +9,7 @@ check_and_define_tp test_vma_vm_pfnmap
 
 kill_test_programs() {
     pkill -9 -f $test_vma_vm_pfnmap
+    return 0
 }
 
 prepare_test() {
