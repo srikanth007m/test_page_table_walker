@@ -23,7 +23,6 @@ prepare_mincore() {
     # hugetlb_empty_check
     set_and_check_hugetlb_pool 1000 || return 1
     prepare_test
-    grep Huge /proc/meminfo
 }
 
 cleanup_test() {

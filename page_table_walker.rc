@@ -9,7 +9,7 @@ DEFAULT_TEST_CLEANUP=cleanup_test
 
 . setup_memcg.sh
 
-TEST_TITLE='memcg_move_task'
+TEST_TITLE=memcg_move_task
 TEST_PREPARE=prepare_$TEST_TITLE
 TEST_CLEANUP=cleanup_$TEST_TITLE
 TEST_CONTROLLER=control_$TEST_TITLE
@@ -48,7 +48,7 @@ do_test_sync
 
 . setup_mbind.sh
 
-TEST_TITLE='mbind_test'
+TEST_TITLE='mbind'
 TEST_PROGRAM="$test_mbind"
 EXPECTED_RETURN_CODE="START EXIT"
 TEST_PREPARE=prepare_mbind
@@ -101,5 +101,16 @@ TEST_PREPARE=prepare_$TEST_TITLE
 TEST_CLEANUP=cleanup_$TEST_TITLE
 TEST_CONTROLLER=control_$TEST_TITLE
 TEST_CHECKER=check_$TEST_TITLE
+EXPECTED_RETURN_CODE="START EXIT"
+do_test_async
+
+. setup_read_through_proc_pid.sh
+
+TEST_TITLE='read_through_proc_pid'
+TEST_FLAGS=devel
+TEST_PREPARE=prepare_system_default
+TEST_CLEANUP=cleanup_system_default
+TEST_CONTROLLER=control_read_through_proc_pid
+TEST_CHECKER=check_read_through_proc_pid
 EXPECTED_RETURN_CODE="START EXIT"
 do_test_async
