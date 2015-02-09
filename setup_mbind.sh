@@ -1,18 +1,12 @@
 #!/bin/bash
 
-if [[ "$0" =~ "$BASH_SOURCE" ]] ; then
-    echo "$BASH_SOURCE should be included from another script, not directly called."
-    exit 1
-fi
-
-# Main test programs
 check_and_define_tp test_mbind
 check_and_define_tp test_mbind_fuzz
 check_and_define_tp test_mbind_unmap_race
 
 TESTFILE=${WDIR}/testfile
 
-kill_test_programs() {            
+kill_test_programs_mbind() {            
     pkill -9 -f $test_mbind
     pkill -9 -f $test_mbind_fuzz
     pkill -9 -f $test_mbind_unmap_race
@@ -31,25 +25,24 @@ check_numa_node_nr() {
     fi
 }
 
-prepare_test() {
-    get_kernel_message_before
-    kill_test_programs
+__prepare_mbind() {
+    prepare_system_default
+    kill_test_programs_mbind
 }
 
-cleanup_test() {
-    kill_test_programs
-    get_kernel_message_after
-    get_kernel_message_diff
+__cleanup_mbind() {
+    kill_test_programs_mbind
+    cleanup_system_default
 }
 
 prepare_mbind() {
     check_numa_node_nr || return 1
-    sysctl vm.nr_hugepages=200
-    prepare_test
+    set_and_check_hugetlb_pool 200
+    __prepare_mbind
 }
 
 cleanup_mbind() {
-    cleanup_test
+    __cleanup_mbind
     sysctl vm.nr_hugepages=0
     hugetlb_empty_check
 }
@@ -82,15 +75,9 @@ control_mbind() {
     return 1
 }
 
-check_test() {
-    check_kernel_message -v "failed"
-    check_kernel_message_nobug
-    check_return_code "${EXPECTED_RETURN_CODE}"
-}
-
 # inside cheker you must tee output in you own.
 check_mbind() {
-    check_test
+    check_system_default
     check_mbind_numa_maps "700000000000"  || return 1
     check_mbind_numa_maps "700000200000"  || return 1
     check_mbind_numa_maps "700000400000"  || return 1
@@ -123,17 +110,17 @@ check_mbind_numa_maps() {
 
 prepare_mbind_fuzz() {
     check_numa_node_nr || return 1
-    sysctl vm.nr_hugepages=200
+    set_and_check_hugetlb_pool 200
     pkill -9 -P $$ -f $(basename $MBIND_FUZZ) 2> /dev/null
     pkill -9 -P $$ -f $(basename $MBIND_UNMAP) 2> /dev/null
     dd if=/dev/urandom of=${TESTFILE} bs=4096 count=$[512*10]
     mkdir -p ${WDIR}/mount
     mount -t hugetlbfs none ${WDIR}/mount
-    prepare_test
+    prepare_system_default
 }
 
 cleanup_mbind_fuzz() {
-    cleanup_test
+    cleanup_system_default
     pkill -9 -P $$ -f $(basename $MBIND_FUZZ)
     pkill -9 -P $$ -f $(basename $MBIND_UNMAP)
     ipcs -m | cut -f2 -d' ' | egrep '[0-9]' | xargs ipcrm shm > /dev/null 2>&1
@@ -146,6 +133,7 @@ cleanup_mbind_fuzz() {
     umount -f ${WDIR}/mount
     umount -f ${WDIR}/mount
     sysctl vm.nr_hugepages=0
+    hugetlb_empty_check
 }
 
 control_mbind_fuzz() {
@@ -163,7 +151,7 @@ control_mbind_fuzz() {
 
 check_mbind_fuzz() {
     echo "---" | tee -a ${OFILE}
-    check_test
+    check_system_default
 }
 
 control_mbind_fuzz_normal_heavy() {

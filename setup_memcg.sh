@@ -15,21 +15,6 @@ check_and_define_tp test_malloc_madv_willneed
 
 yum install -y libcgroup-tools
 
-prepare_test() {
-    get_kernel_message_before
-}
-
-cleanup_test() {
-    get_kernel_message_after
-    get_kernel_message_diff
-}
-
-check_test() {
-    check_kernel_message -v "failed"
-    check_kernel_message_nobug
-    check_return_code "${EXPECTED_RETURN_CODE}"
-}
-
 __prepare_memcg() {
     cgdelete cpu,memory:test1 2> /dev/null
     cgdelete cpu,memory:test2 2> /dev/null
@@ -47,13 +32,13 @@ __cleanup_memcg() {
 prepare_memcg_move_task() {
     pkill -9 sleep
     __prepare_memcg || return 1
-    prepare_test
+    prepare_system_default
 }
 
 cleanup_memcg_move_task() {
     pkill -P $$ -9 sleep
     __cleanup_memcg || return 1
-    cleanup_test
+    cleanup_system_default
 }
 
 control_memcg_move_task() {
@@ -75,7 +60,7 @@ control_memcg_move_task() {
 }
 
 check_memcg_move_task() {
-    check_test
+    check_system_default
     count_testcount
     if diff $TMPF.test1_tasks_1 $TMPF.test2_tasks_2 2> /dev/null >&2 ; then
         count_success "processes moved from memory:test1 to memory:test2"
@@ -170,7 +155,7 @@ control_force_swapin_readahead() {
 }
 
 check_force_swapin_readahead() {
-    check_test
+    check_system_default
 
     FALSENEGATIVE=true
     count_testcount

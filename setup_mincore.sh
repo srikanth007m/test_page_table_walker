@@ -1,21 +1,11 @@
 #!/bin/bash
 
-if [[ "$0" =~ "$BASH_SOURCE" ]] ; then
-    echo "$BASH_SOURCE should be included from another script, not directly called."
-    exit 1
-fi
-
 check_and_define_tp test_mincore
 echo always > /sys/kernel/mm/transparent_hugepage/enabled
 
-kill_test_programs() {
+kill_test_programs_mincore() {
     pkill -9 -f $test_mincore
     return 0
-}
-
-prepare_test() {
-    get_kernel_message_before
-    kill_test_programs
 }
 
 prepare_mincore() {
@@ -23,19 +13,19 @@ prepare_mincore() {
     dd if=/dev/zero of=${TMPF}.holefile bs=4096 count=2 seek=2046 > /dev/null 2>&1
     # hugetlb_empty_check
     set_and_check_hugetlb_pool 1000 || return 1
-    prepare_test
+    prepare_system_default
+    kill_test_programs_mincore
 }
 
-cleanup_test() {
-    kill_test_programs
-    get_kernel_message_after
-    get_kernel_message_diff
+__cleanup_mincore() {
+    kill_test_programs_mincore
+    cleanup_system_default
 }
 
 cleanup_mincore() {
     sysctl vm.nr_hugepages=0
     hugetlb_empty_check
-    cleanup_test
+    __cleanup_mincore
 }
 
 control_mincore() {
@@ -66,9 +56,7 @@ control_mincore() {
 
 # inside cheker you must tee output in you own.
 check_mincore() {
-    check_kernel_message -v "failed"
-    check_kernel_message_nobug
-    check_return_code "${EXPECTED_RETURN_CODE}"
+    check_system_default
     check_mincore_map "mincore1" '\b1\{256\}0\{256\}\b' || return 1
     check_mincore_map "mincore2" '\b1\{512\}\b' || return 1
     check_mincore_map "mincore3" '\b1\{512\}\b' || return 1

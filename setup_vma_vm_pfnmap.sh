@@ -1,34 +1,20 @@
 #!/bin/bash
 
-if [[ "$0" =~ "$BASH_SOURCE" ]] ; then
-    echo "$BASH_SOURCE should be included from another script, not directly called."
-    exit 1
-fi
-
 check_and_define_tp test_vma_vm_pfnmap
 
-kill_test_programs() {
+kill_test_programs_pfnmap() {
     pkill -9 -f $test_vma_vm_pfnmap
     return 0
 }
 
-prepare_test() {
-    get_kernel_message_before
-    kill_test_programs
-}
-
-cleanup_test() {
-    kill_test_programs
-    get_kernel_message_after
-    get_kernel_message_diff
-}
-
 prepare_vma_vm_pfnmap() {
-    prepare_test
+    prepare_system_default
+    kill_test_programs_pfnmap
 }
 
 cleanup_vma_vm_pfnmap() {
-    cleanup_test
+    kill_test_programs_pfnmap
+    cleanup_system_default
 }
 
 read_pagemap() {
@@ -71,9 +57,7 @@ control_vma_vm_pfnmap() {
 }
 
 check_vma_vm_pfnmap() {
-    check_kernel_message -v "failed"
-    check_kernel_message_nobug
-    check_return_code "${EXPECTED_RETURN_CODE}"
+    check_system_default
     check_pagemap
     check_smaps
     check_maps
@@ -159,19 +143,18 @@ check_numa_maps() {
 }
 
 prepare_vma_vm_pfnmap_from_system_process() {
-    prepare_test
+    prepare_system_default
 }
 
 cleanup_vma_vm_pfnmap_from_system_process() {
-    cleanup_test
+    cleanup_system_default
 }
 
 control_vma_vm_pfnmap_from_system_process() {
     TMPF=$TMPF PAGETYPES=$PAGETYPES bash $TRDIR/find_vma_vm_pfnmap.sh
+    set_return_code EXIT
 }
 
 check_vma_vm_pfnmap_from_system_process() {
-    check_kernel_message -v "failed"
-    check_kernel_message_nobug
-    check_return_code "${EXPECTED_RETURN_CODE}"
+    check_system_default
 }
