@@ -111,8 +111,8 @@ check_mbind_numa_maps() {
 prepare_mbind_fuzz() {
     check_numa_node_nr || return 1
     set_and_check_hugetlb_pool 200
-    pkill -9 -P $$ -f $(basename $MBIND_FUZZ) 2> /dev/null
-    pkill -9 -P $$ -f $(basename $MBIND_UNMAP) 2> /dev/null
+    pkill -9 -P $$ -f $(basename $test_mbind_fuzz) 2> /dev/null
+    pkill -9 -P $$ -f $(basename $test_mbind_unmap_race) 2> /dev/null
     dd if=/dev/urandom of=${TESTFILE} bs=4096 count=$[512*10]
     mkdir -p ${WDIR}/mount
     mount -t hugetlbfs none ${WDIR}/mount
@@ -121,8 +121,8 @@ prepare_mbind_fuzz() {
 
 cleanup_mbind_fuzz() {
     cleanup_system_default
-    pkill -9 -P $$ -f $(basename $MBIND_FUZZ)
-    pkill -9 -P $$ -f $(basename $MBIND_UNMAP)
+    pkill -9 -P $$ -f $(basename $test_mbind_fuzz)
+    pkill -9 -P $$ -f $(basename $test_mbind_unmap_race)
     ipcs -m | cut -f2 -d' ' | egrep '[0-9]' | xargs ipcrm shm > /dev/null 2>&1
     ipcs -m | cut -f2 -d' ' | egrep '[0-9]' | xargs ipcrm -m > /dev/null 2>&1
     rm -rf ${WDIR}/mount/*
@@ -138,7 +138,7 @@ cleanup_mbind_fuzz() {
 
 control_mbind_fuzz() {
     echo "start mbind_fuzz" | tee -a ${OFILE}
-    ${MBIND_FUZZ} -f ${TESTFILE} -n 10 -N 10 -t 0xff > ${TMPF}.fuz.out 2>&1 &
+    ${test_mbind_fuzz} -f ${TESTFILE} -n 10 -N 10 -t 0xff > ${TMPF}.fuz.out 2>&1 &
     local pid=$!
     sleep 5
     ${PAGETYPES} -p $pid     > /dev/null
@@ -160,11 +160,11 @@ control_mbind_fuzz_normal_heavy() {
     local nr=1000
     local type=0x80
     for i in $(seq $threads) ; do
-        ${MBIND_FUZZ} -f ${TESTFILE} -n $nr -t $type > ${TMPF}.fuz.out 2>&1 &
+        ${test_mbind_fuzz} -f ${TESTFILE} -n $nr -t $type > ${TMPF}.fuz.out 2>&1 &
         # echo "pid $!"
     done
     sleep 5
-    pkill -SIGUSR1 -f ${MBIND_FUZZ}
+    pkill -SIGUSR1 -f ${test_mbind_fuzz}
     set_return_code EXIT
 }
 
@@ -174,10 +174,10 @@ control_mbind_unmap_race() {
     local nr=1000
     local type=0x80
     for i in $(seq $threads) ; do
-        ${MBIND_UNMAP} -f ${TESTFILE} -n $nr -N 2 -t $type > ${TMPF}.fuz.out 2>&1 &
+        ${test_mbind_unmap_race} -f ${TESTFILE} -n $nr -N 2 -t $type > ${TMPF}.fuz.out 2>&1 &
         echo "pid $!"
     done
     sleep 10
-    pkill -SIGUSR1 -f ${MBIND_UNMAP}
+    pkill -SIGUSR1 -f ${test_mbind_unmap_race}
     set_return_code EXIT
 }
