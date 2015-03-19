@@ -61,6 +61,6 @@ TEST_TITLE=read_through_proc_pid
 TEST_PREPARE=prepare_system_default
 TEST_CLEANUP=cleanup_system_default
 TEST_CONTROLLER=control_read_through_proc_pid
-TEST_CHECKER=check_read_through_proc_pid
+TEST_CHECKER=check_system_default
 EXPECTED_RETURN_CODE="START EXIT"
 do_test_async

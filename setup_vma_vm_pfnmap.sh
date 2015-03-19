@@ -151,7 +151,9 @@ cleanup_vma_vm_pfnmap_from_system_process() {
 }
 
 control_vma_vm_pfnmap_from_system_process() {
+    echo "Walk through processes with vma(VM_PFNMAP) and check pagemap/maps/smaps/numa_maps" | tee -a $OFILE
     TMPF=$TMPF PAGETYPES=$PAGETYPES bash $TRDIR/find_vma_vm_pfnmap.sh
+    echo "done" | tee -a $OFILE
     set_return_code EXIT
 }
 

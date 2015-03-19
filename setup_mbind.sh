@@ -129,9 +129,6 @@ cleanup_mbind_fuzz() {
     echo 3 > /proc/sys/vm/drop_caches
     sync
     umount -f ${WDIR}/mount
-    umount -f ${WDIR}/mount
-    umount -f ${WDIR}/mount
-    umount -f ${WDIR}/mount
     sysctl vm.nr_hugepages=0
     hugetlb_empty_check
 }
@@ -140,17 +137,19 @@ control_mbind_fuzz() {
     echo "start mbind_fuzz" | tee -a ${OFILE}
     ${test_mbind_fuzz} -f ${TESTFILE} -n 10 -N 10 -t 0xff > ${TMPF}.fuz.out 2>&1 &
     local pid=$!
+    echo "10 processes running" | tee -a $OFILE
+    ps | tee -a $OFILE
     sleep 5
     ${PAGETYPES} -p $pid     > /dev/null
     cat /proc/$pid/numa_maps > /dev/null
     cat /proc/$pid/smaps     > /dev/null
     cat /proc/$pid/maps      > /dev/null
+    echo "Done, kill the processes" | tee -a $OFILE
     pkill -SIGUSR1 $pid
     set_return_code EXIT
 }
 
 check_mbind_fuzz() {
-    echo "---" | tee -a ${OFILE}
     check_system_default
 }
 
@@ -161,9 +160,12 @@ control_mbind_fuzz_normal_heavy() {
     local type=0x80
     for i in $(seq $threads) ; do
         ${test_mbind_fuzz} -f ${TESTFILE} -n $nr -t $type > ${TMPF}.fuz.out 2>&1 &
-        # echo "pid $!"
     done
+    echo "$nr processes / $threads threads running" | tee -a $OFILE
+    ps | head -n10 | tee -a $OFILE
+    echo "..." | tee -a $OFILE
     sleep 5
+    echo "Done, kill the processes" | tee -a $OFILE
     pkill -SIGUSR1 -f ${test_mbind_fuzz}
     set_return_code EXIT
 }
@@ -175,9 +177,12 @@ control_mbind_unmap_race() {
     local type=0x80
     for i in $(seq $threads) ; do
         ${test_mbind_unmap_race} -f ${TESTFILE} -n $nr -N 2 -t $type > ${TMPF}.fuz.out 2>&1 &
-        echo "pid $!"
     done
+    echo "$nr processes / $threads threads running" | tee -a $OFILE
+    ps | head -n10 | tee -a $OFILE
+    echo "..." | tee -a $OFILE
     sleep 10
+    echo "Done, kill the processes" | tee -a $OFILE
     pkill -SIGUSR1 -f ${test_mbind_unmap_race}
     set_return_code EXIT
 }
