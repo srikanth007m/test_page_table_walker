@@ -121,10 +121,11 @@ prepare_mbind_fuzz() {
 
 cleanup_mbind_fuzz() {
     cleanup_system_default
-    pkill -9 -P $$ -f $(basename $test_mbind_fuzz)
-    pkill -9 -P $$ -f $(basename $test_mbind_unmap_race)
+    pkill -9 -f $(basename $test_mbind_fuzz)
+    pkill -9 -f $(basename $test_mbind_unmap_race)
     ipcs -m | cut -f2 -d' ' | egrep '[0-9]' | xargs ipcrm shm > /dev/null 2>&1
     ipcs -m | cut -f2 -d' ' | egrep '[0-9]' | xargs ipcrm -m > /dev/null 2>&1
+    ipcrm --all=shm
     rm -rf ${WDIR}/mount/*
     echo 3 > /proc/sys/vm/drop_caches
     sync
@@ -133,19 +134,20 @@ cleanup_mbind_fuzz() {
     hugetlb_empty_check
 }
 
+MBIND_FUZZ_TYPE=0xff
+MBIND_FUZZ_DURATION=5
+MBIND_FUZZ_HP_NR=10
+
 control_mbind_fuzz() {
     echo "start mbind_fuzz" | tee -a ${OFILE}
-    ${test_mbind_fuzz} -f ${TESTFILE} -n 10 -N 10 -t 0xff > ${TMPF}.fuz.out 2>&1 &
+    eval ${test_mbind_fuzz} -f ${TESTFILE} -n 10 -N $MBIND_FUZZ_HP_NR -t $MBIND_FUZZ_TYPE > ${TMPF}.fuz.out 2>&1 &
+    # ${test_mbind_fuzz} -f ${TESTFILE} -n 10 -N 10 -t 0xff > ${TMPF}.fuz.out 2>&1 &
     local pid=$!
     echo "10 processes running" | tee -a $OFILE
-    ps | tee -a $OFILE
     sleep 5
-    ${PAGETYPES} -p $pid     > /dev/null
-    cat /proc/$pid/numa_maps > /dev/null
-    cat /proc/$pid/smaps     > /dev/null
-    cat /proc/$pid/maps      > /dev/null
-    echo "Done, kill the processes" | tee -a $OFILE
     pkill -SIGUSR1 $pid
+    grep -i ^huge /proc/meminfo
+    echo "Done, kill the processes" | tee -a $OFILE
     set_return_code EXIT
 }
 
